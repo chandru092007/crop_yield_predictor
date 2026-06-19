@@ -11,6 +11,7 @@ venv/
 # Data and model artifacts
 *.pkl
 *.csv
+!india_crop_yield_20000_rows.csv
 
 # OS
 .DS_Store
