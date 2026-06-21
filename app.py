@@ -74,6 +74,12 @@ elif page == "Predict":
        nitrogen = st.slider("Nitrogen (N)", 0, 150, 90)
        phosphorus = st.slider("Phosphorus (P)", 0, 100, 40)
        potassium = st.slider("Potassium (K)", 0, 100, 40)
+       
+       price_per_quintal = st.number_input("Selling Price (₹ per quintal)", min_value=0.0)
+       cost_per_hectare = st.number_input("Cost of Cultivation (₹ per hectare)", min_value=0.0)
+
+       scenario = st.selectbox("Select Climate Scenario", 
+                        ["Normal", "Drought", "Flood", "Heatwave", "Cold Spell"])
 
        state_enc = state.transform([state_selected])[0]
        crop_enc = crop.transform([crop_selected])[0]
@@ -92,9 +98,37 @@ elif page == "Predict":
               yield_pred = prediction[0]
               production = yield_pred * area
 
+              revenue = production * price_per_quintal
+              cost = cost_per_hectare * area
+              profit = revenue - cost
+
               st.success(f"🌾 Predicted Yield: {yield_pred:.2f} quintal/hectare")
               st.info(f"📦 Estimated Production: {production:.2f} quintal")
+              st.warning(f"💰 Estimated Profit: ₹{profit:.2f}")
 
+              st.subheader("🌦 Climate Simulator")
+              
+              
+              if scenario == "Drought":
+                     rainfall = 50
+                     humidity = 30
+              elif scenario == "Flood":
+                     rainfall = 400
+                     humidity = 90
+              elif scenario == "Heatwave":
+                     temperature = 40
+                     humidity = 20
+              elif scenario == "Cold Spell":
+                     temperature = 10
+                     humidity = 80
+              else:
+                     rainfall = 200
+                     temperature = 25
+                     humidity = 60
+
+              st.write(f"🌧 Rainfall: {rainfall} mm | 🌡 Temperature: {temperature} °C | 💧 Humidity: {humidity}%")
+              
+              
        # Yield visualization
               st.subheader("📊 Yield Distribution")
 
