@@ -16,20 +16,54 @@ season=pickle.load(open("season.pkl","rb"))
 soil=pickle.load(open("soil.pkl","rb"))
 
 
+# Initialize session state for storing input values
+if "farm_data" not in st.session_state:
+    st.session_state.farm_data = {}
 
 api_key = os.getenv("GROQ_API_KEY", "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")
 
 client = Groq(api_key=api_key)
 
-def get_chat_response(user_input, language="en"):
+def get_chat_response(user_input, farm_data=None, language="en"):
     """
     language: 'en' for English, 'ta' for Tamil
+    farm_data: dict containing crop, state, soil, season, area, rainfall, temperature, etc.
     """
-    system_prompt = """
-    You are an AI assistant for farmers. 
-    Provide profit prediction, fertilizer recommendation, and weather intelligence.
+    
+    # Build context from farm data
+    context = ""
+    if farm_data:
+        context = f"""
+        Farmer's Current Farm Details:
+        - Crop: {farm_data.get('crop', 'Not selected')}
+        - State: {farm_data.get('state', 'Not selected')}
+        - Soil Type: {farm_data.get('soil', 'Not selected')}
+        - Season: {farm_data.get('season', 'Not selected')}
+        - Farm Area: {farm_data.get('area', 'N/A')} hectares
+        - Rainfall: {farm_data.get('rainfall', 'N/A')} mm
+        - Temperature: {farm_data.get('temperature', 'N/A')} °C
+        - Humidity: {farm_data.get('humidity', 'N/A')} %
+        - Nitrogen (N): {farm_data.get('nitrogen', 'N/A')}
+        - Phosphorus (P): {farm_data.get('phosphorus', 'N/A')}
+        - Potassium (K): {farm_data.get('potassium', 'N/A')}
+        - Predicted Yield: {farm_data.get('yield_pred', 'N/A')} quintal/hectare
+        - Estimated Profit: ₹{farm_data.get('profit', 'N/A')}
+        """
+    
+    system_prompt = f"""
+    You are an AI assistant for Indian farmers. 
+    Based on the farmer's specific details provided below, give personalized recommendations for:
+    - Profit maximization
+    - Fertilizer recommendations
+    - Weather intelligence
+    - Crop-specific advice
+    - Soil management tips
+    
+    {context}
+    
     Respond in Tamil if user asks in Tamil, otherwise in English.
-    Keep answers practical and clear.
+    Keep answers practical, clear, and specific to their farm conditions.
+    Provide actionable advice they can implement immediately.
     """
 
     try:
@@ -97,10 +131,29 @@ elif page == "Predict":
 
               yield_pred = prediction[0]
               production = yield_pred * area
-
               revenue = production * price_per_quintal
               cost = cost_per_hectare * area
               profit = revenue - cost
+
+              # Store farm data in session state
+              st.session_state.farm_data = {
+                  "crop": crop_selected,
+                  "state": state_selected,
+                  "soil": soil_selected,
+                  "season": season_selected,
+                  "area": area,
+                  "rainfall": rainfall,
+                  "temperature": temperature,
+                  "humidity": humidity,
+                  "nitrogen": nitrogen,
+                  "phosphorus": phosphorus,
+                  "potassium": potassium,
+                  "yield_pred": round(yield_pred, 2),
+                  "production": round(production, 2),
+                  "profit": round(profit, 2),
+                  "price_per_quintal": price_per_quintal,
+                  "scenario": scenario
+              }
 
               st.success(f"🌾 Predicted Yield: {yield_pred:.2f} quintal/hectare")
               st.info(f"📦 Estimated Production: {production:.2f} quintal")
@@ -151,15 +204,40 @@ elif page == "Predict":
               ax.set_title("Yield vs Production")
 
               st.pyplot(fig)
+
+              
               
               
               
 elif page == "AI CHATBOT":
        st.title("🌾 Crop Yield Predictor + AI Chatbot")
 
-# Chatbot section
+       # Chatbot section
        st.subheader("🤖 AI Farming Assistant (Tamil + English)")
+       
+       # Display stored farm data if available
+       if st.session_state.farm_data:
+           st.info("📊 **Your Current Farm Settings:**")
+           col1, col2, col3 = st.columns(3)
+           
+           with col1:
+               st.write(f"🌾 **Crop:** {st.session_state.farm_data.get('crop', 'N/A')}")
+               st.write(f"🏞️ **State:** {st.session_state.farm_data.get('state', 'N/A')}")
+               st.write(f"🌱 **Soil:** {st.session_state.farm_data.get('soil', 'N/A')}")
+               
+           with col2:
+               st.write(f"📅 **Season:** {st.session_state.farm_data.get('season', 'N/A')}")
+               st.write(f"📍 **Area:** {st.session_state.farm_data.get('area', 'N/A')} ha")
+               st.write(f"🌧️ **Rainfall:** {st.session_state.farm_data.get('rainfall', 'N/A')} mm")
+               
+           with col3:
+               st.write(f"🌾 **Yield:** {st.session_state.farm_data.get('yield_pred', 'N/A')} qt/ha")
+               st.write(f"💰 **Profit:** ₹{st.session_state.farm_data.get('profit', 'N/A')}")
+               st.write(f"📦 **Production:** {st.session_state.farm_data.get('production', 'N/A')} qt")
+       else:
+           st.warning("⚠️ No farm data available. Please go to 'Predict' page and click 'Predict Yield' first!")
 
+       st.subheader("💬 Ask Your Questions")
        user_input = st.text_input("Ask about profit, fertilizer, or weather:")
 
        if user_input:
@@ -169,8 +247,9 @@ elif page == "AI CHATBOT":
               else:
                      lang = "en"
 
-              response = get_chat_response(user_input, language=lang)
-              st.write("### Chatbot Response:")
+              # Pass farm data to chatbot
+              response = get_chat_response(user_input, farm_data=st.session_state.farm_data, language=lang)
+              st.write("### 🤖 Chatbot Response:")
               st.success(response)
        else:
               st.info("Enter a question above to get a chatbot response.")
