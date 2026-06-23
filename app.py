@@ -121,90 +121,164 @@ elif page == "Predict":
        soil_enc = soil.transform([soil_selected])[0]
 
 
-       if st.button("Predict Yield"):
+       if st.button("🤖 Generate AI Farm Advice"):
        
-              sample = np.array([[state_enc,crop_enc,season_enc,soil_enc,
+            sample = np.array([[state_enc,crop_enc,season_enc,soil_enc,
                             area,rainfall,temperature,
                             humidity,nitrogen,phosphorus,potassium]])
 
-              prediction = model.predict(sample)
+            prediction = model.predict(sample)
 
-              yield_pred = prediction[0]
-              production = yield_pred * area
-              revenue = production * price_per_quintal
-              cost = cost_per_hectare * area
-              profit = revenue - cost
+            yield_pred = prediction[0]
+            production = yield_pred * area
+            revenue = production * price_per_quintal
+            cost = cost_per_hectare * area
+            profit = revenue - cost
+
+            st.session_state.farm_data = {
+            "crop": crop_selected,
+            "state": state_selected,
+            "soil": soil_selected,
+            "season": season_selected,
+            "area": area,
+            "rainfall": rainfall,
+            "temperature": temperature,
+            "humidity": humidity,
+            "nitrogen": nitrogen,
+            "phosphorus": phosphorus,
+            "potassium": potassium,
+            "yield_pred": round(yield_pred, 2),
+            "production": round(production, 2),
+            "profit": round(profit, 2)
+        }
+
+
+            st.success(f"🌾 Predicted Yield: {yield_pred:.2f} quintal/hectare")
+            st.info(f"📦 Estimated Production: {production:.2f} quintal")
+            st.warning(f"💰 Estimated Profit: ₹{profit:.2f}")
+
+            # AI Farm Advisor
+            
+
+            advisor_prompt = f"""
+                Crop: {crop_selected}
+                State: {state_selected}
+                Soil: {soil_selected}
+
+                Yield: {yield_pred}
+
+                Profit: {profit}
+
+                Rainfall: {rainfall}
+                Temperature: {temperature}
+                Humidity: {humidity}
+
+                Give:
+                1. Fertilizer advice
+                2. Water management
+                3. Profit improvement tips
+                4. Risk warnings
+                5. Alternative crop suggestion
+                """
+
+            advice = client.chat.completions.create(
+                    model="llama-3.1-8b-instant",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": advisor_prompt
+                        }
+                    ]
+                )
+
+            st.subheader("🤖 AI Farm Advisor")
+            st.success(advice.choices[0].message.content)
+
 
               # Store farm data in session state
-              st.session_state.farm_data = {
-                  "crop": crop_selected,
-                  "state": state_selected,
-                  "soil": soil_selected,
-                  "season": season_selected,
-                  "area": area,
-                  "rainfall": rainfall,
-                  "temperature": temperature,
-                  "humidity": humidity,
-                  "nitrogen": nitrogen,
-                  "phosphorus": phosphorus,
-                  "potassium": potassium,
-                  "yield_pred": round(yield_pred, 2),
-                  "production": round(production, 2),
-                  "profit": round(profit, 2),
-                  "price_per_quintal": price_per_quintal,
-                  "scenario": scenario
-              }
+              # Climate simulation values
+            scenario_rainfall = rainfall
+            scenario_temperature = temperature
+            scenario_humidity = humidity
 
-              st.success(f"🌾 Predicted Yield: {yield_pred:.2f} quintal/hectare")
-              st.info(f"📦 Estimated Production: {production:.2f} quintal")
-              st.warning(f"💰 Estimated Profit: ₹{profit:.2f}")
+            if scenario == "Drought":
+                scenario_rainfall = rainfall * 0.3
+                scenario_humidity = humidity * 0.5
 
-              st.subheader("🌦 Climate Simulator")
+            elif scenario == "Flood":
+                scenario_rainfall = rainfall * 2
+                scenario_humidity = min(humidity * 1.5, 100)
+
+            elif scenario == "Heatwave":
+                scenario_temperature = temperature + 10
+                scenario_humidity = humidity * 0.6
+
+            elif scenario == "Cold Spell":
+                scenario_temperature = max(temperature - 10, 0)
+
+            
+            
+            scenario_sample = np.array([[
+                    state_enc,
+                    crop_enc,
+                    season_enc,
+                    soil_enc,
+                    area,
+                    scenario_rainfall,
+                    scenario_temperature,
+                    scenario_humidity,
+                    nitrogen,
+                    phosphorus,
+                    potassium
+                ]])
+
+            scenario_yield = model.predict(scenario_sample)[0]
               
-              
-              if scenario == "Drought":
-                     rainfall = 50
-                     humidity = 30
-              elif scenario == "Flood":
-                     rainfall = 400
-                     humidity = 90
-              elif scenario == "Heatwave":
-                     temperature = 40
-                     humidity = 20
-              elif scenario == "Cold Spell":
-                     temperature = 10
-                     humidity = 80
-              else:
-                     rainfall = 200
-                     temperature = 25
-                     humidity = 60
+            st.subheader("🌦 Climate Impact Analysis")
 
-              st.write(f"🌧 Rainfall: {rainfall} mm | 🌡 Temperature: {temperature} °C | 💧 Humidity: {humidity}%")
-              
-              
-       # Yield visualization
-              st.subheader("📊 Yield Distribution")
+            col1, col2 = st.columns(2)
 
-              fig, ax = plt.subplots()
+            with col1:
+                st.metric(
+                    "Normal Yield",
+                    f"{yield_pred:.2f} qt/ha"
+                )
 
-              labels = ["Yield per hectare", "Total Production"]
-              values = [yield_pred, production]
+            with col2:
+                st.metric(
+                    "Scenario Yield",
+                    f"{scenario_yield:.2f} qt/ha",
+                    delta=f"{scenario_yield-yield_pred:.2f}"
+                )
+            if yield_pred > 0:
+                loss_percent = ((yield_pred - scenario_yield) / yield_pred) * 100
+            else:
+                loss_percent = 0
+                
+                
+            st.warning(
+                f"Estimated Yield Change: {loss_percent:.2f}%"
+            )
 
-              colors = ["#22c55e", "#f97316"]
-              explode = (0.1, 0)
 
-              ax.pie(values,
-                     labels=labels,
-                     autopct='%1.1f%%',
-                     colors=colors,
-                     explode=explode,
-                     startangle=90)
+            st.subheader("📊 Farm Performance Dashboard")
 
-              ax.legend(labels, loc="upper right")
-              ax.set_title("Yield vs Production")
+            metrics_df = pd.DataFrame({
+            "Metric": [
+                "Yield",
+                "Production",
+                "Profit"
+            ],
+            "Value": [
+                yield_pred,
+                production,
+                profit
+            ]
+        })
 
-              st.pyplot(fig)
-
+            st.bar_chart(
+            metrics_df.set_index("Metric")
+        )
               
               
               
