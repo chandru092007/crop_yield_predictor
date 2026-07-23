@@ -20,7 +20,7 @@ soil=pickle.load(open("soil.pkl","rb"))
 if "farm_data" not in st.session_state:
     st.session_state.farm_data = {}
 
-api_key = os.getenv("GROQ_API_KEY", "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")
+api_key = os.getenv("GROQ_API_KEY", "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")
 
 client = Groq(api_key=api_key)
 
