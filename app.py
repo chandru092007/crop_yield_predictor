@@ -20,9 +20,8 @@ soil=pickle.load(open("soil.pkl","rb"))
 if "farm_data" not in st.session_state:
     st.session_state.farm_data = {}
 
-api_key = os.getenv("GROQ_API_KEY", "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")
-
-client = Groq(api_key=api_key)
+api_key = os.getenv("GROQ_API_KEY")
+client = Groq(api_key=api_key) if api_key else None
 
 def get_chat_response(user_input, farm_data=None, language="en"):
     """
@@ -51,13 +50,13 @@ def get_chat_response(user_input, farm_data=None, language="en"):
         """
     
     system_prompt = f"""
-    You are an AI assistant for Indian farmers. 
-    Based on the farmer's specific details provided below, give personalized recommendations for:
-    - Profit maximization
-    - Fertilizer recommendations
-    - Weather intelligence
-    - Crop-specific advice
-    - Soil management tips
+You are talking with an AI assistant for Indian farmers.
+Based on the farmers details provided below, Give appropriate recommendations for the following:
+Profit maximisation
+Fertilizers
+Weather
+Crops
+Soil
     
     {context}
     
@@ -161,17 +160,17 @@ elif page == "Predict":
             
 
             advisor_prompt = f"""
-                Crop: {crop_selected}
-                State: {state_selected}
-                Soil: {soil_selected}
+                crop: {crop_selected}
+                state: {state_selected}
+                soil: {soil_selected}
 
-                Yield: {yield_pred}
+                yield: {yield_pred}
 
-                Profit: {profit}
+                profit: {profit}
 
-                Rainfall: {rainfall}
-                Temperature: {temperature}
-                Humidity: {humidity}
+                rainfall: {rainfall}
+                temperature: {temperature}
+                humidity: {humidity}
 
                 Give:
                 1. Fertilizer advice
@@ -181,18 +180,27 @@ elif page == "Predict":
                 5. Alternative crop suggestion
                 """
 
-            advice = client.chat.completions.create(
-                    model="llama-3.1-8b-instant",
-                    messages=[
-                        {
-                            "role": "user",
-                            "content": advisor_prompt
-                        }
-                    ]
-                )
+            advisor_text = None
+            if client:
+                try:
+                    advice = client.chat.completions.create(
+                        model="llama-3.1-8b-instant",
+                        messages=[
+                            {
+                                "role": "user",
+                                "content": advisor_prompt
+                            }
+                        ]
+                    )
+                    advisor_text = advice.choices[0].message.content
+                except Exception:
+                    advisor_text = None
 
             st.subheader("🤖 AI Farm Advisor")
-            st.success(advice.choices[0].message.content)
+            if advisor_text:
+                st.success(advisor_text)
+            else:
+                st.error("An error occurred in generative ai farm adivisory. Please try again later.")
 
 
               # Store farm data in session state
