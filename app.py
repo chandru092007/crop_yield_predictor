@@ -65,6 +65,11 @@ Soil
     Provide actionable advice they can implement immediately.
     """
 
+    api_error_message = "please set a new api key your api key is expired"
+
+    if not client:
+        return api_error_message
+
     try:
         response = client.chat.completions.create(
             model="llama-3.1-8b-instant",  # Groq fast model
@@ -75,8 +80,8 @@ Soil
             temperature=0.7
         )
         return response.choices[0].message.content
-    except Exception as e:
-        return f"Error: {str(e)}"
+    except Exception:
+        return api_error_message
 
 
 
